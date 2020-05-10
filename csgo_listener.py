@@ -83,17 +83,26 @@ hotkey = Hotkey(
     While GetKeyState("LButton","P"){
         if !GetKeyState("RControl", "P") {
             MouseClick, Left
-            Sleep 20
+            Sleep 10
         }
     }
     return
     ''')
 
 def beep_turn_on():
-    ahk.sound_beep(frequency=600, duration=1000)
+    def inner():
+        ahk.sound_beep(frequency=500, duration=100)
+        ahk.sound_beep(frequency=800, duration=100)
+    threading.Thread(target=inner).start()
+    
 
 def beep_turn_off():
-    ahk.sound_beep(frequency=440, duration=1000)
+    def inner():
+        if not is_bind_user_enabled:
+            ahk.sound_beep(frequency=1000, duration=100)
+        ahk.sound_beep(frequency=800, duration=100)
+        ahk.sound_beep(frequency=500, duration=100)
+    threading.Thread(target=inner).start()
 
 def auto_start_stop_script(phase: str, weapon: str):
     global _last_phase, _last_selected_weapon, is_bind_user_enabled, is_program_in_focus
