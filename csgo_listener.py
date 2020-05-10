@@ -6,6 +6,7 @@ from ctypes import wintypes, windll, create_unicode_buffer
 from http.server import HTTPServer, BaseHTTPRequestHandler
 import threading
 import json
+import os
 
 ##### CONFIG #####
 
@@ -91,8 +92,8 @@ hotkey = Hotkey(
 
 def beep_turn_on():
     def inner():
-        ahk.sound_beep(frequency=500, duration=100)
-        ahk.sound_beep(frequency=800, duration=100)
+        ahk.sound_beep(frequency=400, duration=100)
+        ahk.sound_beep(frequency=1000, duration=100)
     threading.Thread(target=inner).start()
     
 
@@ -190,5 +191,6 @@ if __name__ == "__main__":
         pass
     
     is_closing = True
-    hotkey.stop()
+    stop_script()
+    os.system('TASKKILL /IM AutoHotkey.exe /F')
     print("Closed app")
