@@ -12,37 +12,14 @@ import os
 
 BIND_TRIGGER_KEY = '~$LButton'
 TOGGLE_KEY = keyboard.Key.f8
-SERVER_ADDRESS = ('', 3001)
-ALLOWED_PHASES = ("live", "over")
-ALLOW_IN_PROGRAMS = ("Counter-Strike: Global Offensive", )
+ALLOW_IN_PROGRAMS = ("Counter-Strike: Global Offensive", "Valorant")
 WINDOW_FOCUS_POLLING_TIME = 1 # Time in secs
-
-WEAPONS_WITH_AUTO_FIRE_ENABLED = ["weapon_%s" % i for i in [
-    "glock",
-    "elite",
-    "p250",
-    "tec9",
-    #"deagle",
-    #"cz75a",
-    "usp_silencer",
-    #"revolver",
-    "hkp2000",
-    "fiveseven",
-
-    "nova",
-    "xm1014",
-    "sawedoff",
-    "mag7"
-]]
 
 ### END CONFIG ###
 
 is_bind_user_enabled = True
 is_program_in_focus = False
 is_closing = False
-
-_last_selected_weapon = None
-_last_phase = None
 
 ahk = AHK()
 
@@ -62,20 +39,16 @@ def window_focus_detect_loop():
         re_eval = tmp != is_program_in_focus
         is_program_in_focus = tmp
         if re_eval:
-            _last_phase = None # Force re-evaluation of whether script is enabled
+            on_press(None)  # Make it re-evaluate
         sleep(WINDOW_FOCUS_POLLING_TIME)
 
 # pynput handler
 def on_press(key):
-    global _last_phase, _last_selected_weapon, is_bind_user_enabled
+    global is_bind_user_enabled, is_program_in_focus
     if key == TOGGLE_KEY:
         is_bind_user_enabled = not is_bind_user_enabled
-    if is_bind_user_enabled:
-        t1, t2 = _last_phase, _last_selected_weapon
-        _last_phase, _last_selected_weapon = None, None
-        auto_start_stop_script(t1, t2)
-    else:
-        stop_script()
+
+    start_script() if (is_bind_user_enabled and is_program_in_focus) else stop_script()
 
 hotkey = Hotkey(
     ahk,
@@ -114,25 +87,6 @@ def beep_turn_off():
             ahk.sound_beep(frequency=440, duration=50)
     threading.Thread(target=inner).start()
 
-def auto_start_stop_script(phase: str, weapon: str):
-    global _last_phase, _last_selected_weapon, is_bind_user_enabled, is_program_in_focus
-    if _last_phase == phase and _last_selected_weapon == weapon:
-        return
-    
-    _last_phase = phase
-    _last_selected_weapon = weapon
-
-    print(f"Evaluating phase={phase}, weapon={weapon}, user_enabled={is_bind_user_enabled}, focus={is_program_in_focus}")
-
-    if phase not in ALLOWED_PHASES or not is_program_in_focus:
-        stop_script()
-        return
-
-    if weapon in WEAPONS_WITH_AUTO_FIRE_ENABLED and is_bind_user_enabled:
-        start_script()
-    else:
-        stop_script()
-
 
 def start_script():
     if not hotkey.running:
@@ -147,42 +101,6 @@ def stop_script():
         print("Clickbind Disabled"+(" "*16), end="\r")
 
 
-class MyRequestHandler(BaseHTTPRequestHandler):
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-
-    def log_request(self, code=None, size=None):
-        pass
-    
-    def do_POST(self):
-        self.send_header('Content-type', 'text/html')
-        self.send_response(200)
-        self.end_headers()
-        
-        length = int(self.headers['Content-Length'])
-        body = self.rfile.read(length).decode('utf-8')
-
-        payload: dict = json.loads(body)
-
-        try:
-            phase = payload["round"]["phase"]
-            _weapons = payload["player"]["weapons"]
-        except KeyError:
-            print("KeyError: phase or _weapons is NoneType")
-            return
-
-        if phase is None or _weapons is None:
-            print("debug phase or weapons is NoneType")
-            return
-
-        selected_weapon = list(filter( lambda x: x["state"] == "active", [_weapons.get("weapon_0", {"state": ""}), _weapons.get("weapon_1", {"state": ""}), _weapons.get("weapon_2", {"state": ""})]))[0]["name"]
-        auto_start_stop_script(phase, selected_weapon)
-
-
-def run(server_class=HTTPServer, handler_class=MyRequestHandler):
-    httpd = server_class(SERVER_ADDRESS, handler_class)
-    httpd.serve_forever()
-
 
 if __name__ == "__main__":
     listener = keyboard.Listener(
@@ -192,12 +110,13 @@ if __name__ == "__main__":
     t.start()
     print("Starting Key listener for %s" % str(TOGGLE_KEY))
     print("Starting window focus listener")
-    print("Starting HTTP server at %s:%s" % (SERVER_ADDRESS[0] if SERVER_ADDRESS[0] != "" else "127.0.0.1", SERVER_ADDRESS[1]))
+    print("WARNING: If you don't close via ctrl+C, the auto hot key script may still be running and must be closed from the task bar!")
     print("Press ctrl+C to exit")
     print()
-    print('Clickbind waiting for GSI request', end='\r')
+    print('Clickbind will enable when an allowed app is in focus', end='\r')
     try:
-        run()
+        while True:
+            sleep(10)
     except KeyboardInterrupt:
         pass
     

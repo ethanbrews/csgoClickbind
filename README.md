@@ -9,6 +9,8 @@
 5. Run `pip3 install -r requirements.txt`
 6. Run `python3 csgo_listener.py`
 
+If you don't want the CS:GO integration, or want to use this for other games, you can skip step 4 then, instead of step 6, run `python3 simple_bind.py`
+
 ## How to use
 
 Run the program before starting CS:GO. The script will detect which weapons you have enabled and for most non-automatic weapons the clickbind will be enabled.
